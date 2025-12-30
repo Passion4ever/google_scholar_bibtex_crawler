@@ -1,5 +1,5 @@
 # Cookie 缓存
-.google_scholar_cookies.pkl
+.google_scholar_cookies.json
 
 # Python
 __pycache__/
