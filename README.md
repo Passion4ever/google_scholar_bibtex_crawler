@@ -11,7 +11,17 @@ pip install -r requirements.txt
 ## 使用
 
 ```bash
-python get_google_scholar_bibtex.py <input.txt> [output.bib]
+python get_google_scholar_bibtex.py <input.txt> [output.bib] [--proxy HOST:PORT]
+```
+
+### 示例
+
+```bash
+# 基本使用
+python get_google_scholar_bibtex.py papers.txt
+
+# 使用代理
+python get_google_scholar_bibtex.py papers.txt --proxy 127.0.0.1:7890
 ```
 
 ### 输入格式

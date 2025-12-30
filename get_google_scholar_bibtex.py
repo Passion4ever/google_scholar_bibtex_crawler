@@ -7,7 +7,7 @@ Google Scholar BibTeX Crawler
     pip install undetected-chromedriver selenium
 
 使用方法:
-    python get_google_scholar_bibtex.py <input.txt> [output.bib]
+    python get_google_scholar_bibtex.py <input.txt> [output.bib] [--proxy HOST:PORT]
 """
 
 import os
@@ -16,6 +16,7 @@ import time
 import random
 import json
 import logging
+import argparse
 from urllib.parse import quote_plus
 
 # 配置日志
@@ -50,13 +51,15 @@ def random_delay(min_sec=MIN_DELAY, max_sec=MAX_DELAY):
     return delay
 
 
-def create_browser():
+def create_browser(proxy=None):
     """创建浏览器"""
     options = uc.ChromeOptions()
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
     options.add_argument('--window-size=1920,1080')
     options.add_argument('--lang=en-US')
+    if proxy:
+        options.add_argument(f'--proxy-server={proxy}')
     return uc.Chrome(options=options)
 
 
@@ -211,26 +214,35 @@ def load_progress(output_file):
     return processed
 
 
+def parse_args():
+    """解析命令行参数"""
+    parser = argparse.ArgumentParser(
+        description='自动从 Google Scholar 提取 BibTeX 引用信息'
+    )
+    parser.add_argument('input', help='输入文件，每行一条论文信息')
+    parser.add_argument('output', nargs='?', help='输出文件 (默认: input.bib)')
+    parser.add_argument('--proxy', '-p', help='代理服务器 (如: 127.0.0.1:7890)')
+    return parser.parse_args()
+
+
 def main():
+    args = parse_args()
+
     print("\n📚 Google Scholar BibTeX Crawler")
     print("─" * 50)
 
-    if len(sys.argv) < 2:
-        print("用法: python get_google_scholar_bibtex.py <input.txt> [output.bib]")
-        print("\n示例:")
-        print("  python get_google_scholar_bibtex.py papers.txt")
-        print("  python get_google_scholar_bibtex.py papers.txt refs.bib")
-        sys.exit(1)
-
-    input_file = sys.argv[1]
+    input_file = args.input
     if not os.path.exists(input_file):
         print(f"❌ 错误: 文件 '{input_file}' 不存在")
         sys.exit(1)
 
-    output_file = sys.argv[2] if len(sys.argv) >= 3 else os.path.splitext(input_file)[0] + ".bib"
+    output_file = args.output or os.path.splitext(input_file)[0] + ".bib"
 
     print(f"📂 输入: {input_file}")
-    print(f"📄 输出: {output_file}\n")
+    print(f"📄 输出: {output_file}")
+    if args.proxy:
+        print(f"🔗 代理: {args.proxy}")
+    print()
 
     # 读取输入
     with open(input_file, 'r', encoding='utf-8') as f:
@@ -249,7 +261,7 @@ def main():
     mode = 'a' if processed else 'w'
 
     try:
-        browser = create_browser()
+        browser = create_browser(proxy=args.proxy)
         wait = WebDriverWait(browser, 15)
 
         browser.get("https://scholar.google.com")
