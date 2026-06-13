@@ -76,6 +76,8 @@ def test_pick_best_returns_none_when_all_below_low():
 def test_is_annotation_doi():
     assert is_annotation_doi("10.3410/f.740477162.793587584")   # F1000
     assert is_annotation_doi("10.1530/ey.19.15.15")             # Bioscientifica Year Book
+    assert is_annotation_doi("10.55277/researchhub.zto7x62j")   # ResearchHub 镜像
+    assert not is_annotation_doi("10.1038/s41586-024-07487-w")  # 真实 Nature 论文
     assert not is_annotation_doi("10.1126/science.abj8754")     # 真实论文
     assert not is_annotation_doi(None)
 

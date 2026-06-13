@@ -93,6 +93,37 @@ async def test_title_no_match_falls_back_to_scholar(cfg):
     assert r.review is True
 
 
+async def test_title_multi_source_agreement_upgrades_to_high(cfg):
+    # 两个源给同一 DOI、标题略有差异(单源会存疑)→ 多源一致升级为 high
+    near = "Exact Title Here now"   # score ~89,落在 [low, high)
+    cands = [
+        Candidate(title=near, doi="10.2/same", source="crossref"),
+        Candidate(title=near, doi="10.2/same", source="openalex"),
+    ]
+    src = FakeSources(candidates=cands, doi_bibtex="@article{y,}")
+    async with httpx.AsyncClient() as client:
+        r = await resolve("Exact Title Here", client=client, sources=src,
+                          cfg=Config.from_env(high=99, low=50, dotenv_path="/nope"))
+    assert r.ok
+    assert r.review is False
+    assert "印证" in r.source   # 标注了多源印证
+
+
+async def test_title_conflicting_dois_flag_review(cfg):
+    # 两个不同 DOI 都逐字匹配(同名不同篇)→ 存疑
+    title = "Some Ambiguous Title"
+    cands = [
+        Candidate(title=title, doi="10.1/a", source="crossref"),
+        Candidate(title=title, doi="10.2/b", source="openalex"),
+    ]
+    src = FakeSources(candidates=cands, doi_bibtex="@article{z,}")
+    async with httpx.AsyncClient() as client:
+        r = await resolve(title, client=client, sources=src, cfg=cfg)
+    assert r.ok
+    assert r.review is True
+    assert r.error and "10.1/a" in r.error and "10.2/b" in r.error
+
+
 async def test_title_total_failure_marks_failed(cfg):
     src = FakeSources(candidates=[], scholar_bibtex=None)
     async with httpx.AsyncClient() as client:

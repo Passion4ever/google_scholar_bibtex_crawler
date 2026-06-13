@@ -4,7 +4,7 @@ import httpx
 
 from .classify import classify
 from .config import Config
-from .matching import pick_best
+from .matching import consolidate
 from .models import Result
 from .normalize import normalize_bibtex
 
@@ -29,29 +29,37 @@ async def resolve(query: str, *, client: httpx.AsyncClient, sources, cfg: Config
         return Result(query=query, confidence="failed",
                       error="DOI content negotiation failed")
 
-    # 标题:并发消歧
+    # 标题:并发消歧 + 多源交叉验证
     candidates = await sources.search_all(client, val, cfg)
-    best = pick_best(val, candidates, high=cfg.high, low=cfg.low)
+    decision = consolidate(val, candidates, high=cfg.high, low=cfg.low)
 
-    if best is not None:
-        review = best.verdict == "review"
+    if decision is not None:
+        review = decision.confidence == "review"
+        cand = decision.candidate
+        # 来源标注:多源印证时附上 agreement,冲突时附上 note
+        src = cand.source
+        if decision.agreement >= 2:
+            src = f"{src}(+{decision.agreement - 1} 源印证)"
+        error = decision.note or None
         # 有 DOI → 取权威 BibTeX
-        if best.candidate.doi:
-            bib = await sources.doi_fetch(client, best.candidate.doi, mailto=cfg.mailto)
+        if cand.doi:
+            bib = await sources.doi_fetch(client, cand.doi, mailto=cfg.mailto)
             if bib:
                 return Result(
                     query=query, bibtex=normalize_bibtex(bib),
-                    doi=best.candidate.doi, source=best.candidate.source,
-                    confidence="review" if review else "high",
-                    match_title=best.candidate.title, score=best.score, review=review,
+                    doi=cand.doi, source=src,
+                    confidence=decision.confidence,
+                    match_title=cand.title, score=decision.score, review=review,
+                    error=error if review else None,
                 )
         # 无 DOI 但源有原生 BibTeX
-        if best.candidate.bibtex:
+        if cand.bibtex:
             return Result(
-                query=query, bibtex=normalize_bibtex(best.candidate.bibtex),
-                doi=best.candidate.doi, source=best.candidate.source,
-                confidence="review" if review else "high",
-                match_title=best.candidate.title, score=best.score, review=review,
+                query=query, bibtex=normalize_bibtex(cand.bibtex),
+                doi=cand.doi, source=src,
+                confidence=decision.confidence,
+                match_title=cand.title, score=decision.score, review=review,
+                error=error if review else None,
             )
 
     # 兜底:Google Scholar

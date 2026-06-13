@@ -55,6 +55,8 @@ def format_entry(result: Result) -> str:
                 f'% REVIEW: 匹配到 "{result.match_title}" '
                 f"score={result.score:.0f} via {result.source} —— 请人工核对"
             )
+            if result.error:   # 冲突说明(如同名不同篇的多个 DOI)
+                lines.append(f"% NOTE: {result.error}")
         else:
             conf = result.confidence
             detail = f"% Source: {result.source} | Confidence: {conf}"
