@@ -199,19 +199,40 @@ def get_bibtex(browser, wait, query):
 
 
 def load_progress(output_file):
-    """加载已处理记录"""
-    processed = set()
-    if os.path.exists(output_file):
-        try:
-            with open(output_file, 'r', encoding='utf-8') as f:
-                for line in f:
-                    if line.startswith('% Query:'):
-                        processed.add(line.replace('% Query:', '').strip())
-        except (IOError, OSError) as e:
-            logger.warning(f"读取进度文件失败: {e}")
-        except UnicodeDecodeError as e:
-            logger.warning(f"进度文件编码错误: {e}")
-    return processed
+    """加载已成功处理的记录，返回 {query: bibtex} 字典。
+
+    只有真正取到 BibTeX 的条目才算完成；标记为 `% Failed` 的条目不计入，
+    以便断点续传时重新尝试。
+    """
+    done = {}
+    if not os.path.exists(output_file):
+        return done
+    try:
+        with open(output_file, 'r', encoding='utf-8') as f:
+            content = f.read()
+    except (IOError, OSError) as e:
+        logger.warning(f"读取进度文件失败: {e}")
+        return done
+    except UnicodeDecodeError as e:
+        logger.warning(f"进度文件编码错误: {e}")
+        return done
+
+    # 按 `% Query:` 切分成块，块内含 BibTeX（以 @ 开头）才算成功
+    current_query = None
+    buffer = []
+    for line in content.splitlines():
+        if line.startswith('% Query:'):
+            block = "\n".join(buffer).strip()
+            if current_query is not None and block.startswith('@'):
+                done[current_query] = block
+            current_query = line.replace('% Query:', '').strip()
+            buffer = []
+        else:
+            buffer.append(line)
+    block = "\n".join(buffer).strip()
+    if current_query is not None and block.startswith('@'):
+        done[current_query] = block
+    return done
 
 
 def parse_args():
@@ -248,17 +269,17 @@ def main():
     with open(input_file, 'r', encoding='utf-8') as f:
         lines = [l.strip() for l in f if l.strip()]
 
-    # 断点续传
-    processed = load_progress(output_file)
-    if processed:
-        print(f"⏩ 断点续传: 跳过已处理的 {len(processed)} 条\n")
+    # 断点续传：只跳过已成功的条目，失败条目会重新尝试
+    done = load_progress(output_file)
+    todo = [q for q in lines if q not in done]
+    if done:
+        print(f"⏩ 断点续传: 跳过已成功的 {len(done)} 条，待处理 {len(todo)} 条\n")
 
     # 启动浏览器
     print("🌐 启动浏览器...")
     browser = None
     success = 0
     failed = []
-    mode = 'a' if processed else 'w'
 
     try:
         browser = create_browser(proxy=args.proxy)
@@ -273,13 +294,17 @@ def main():
         if check_captcha(browser):
             wait_for_captcha(browser)
 
-        with open(output_file, mode, encoding='utf-8') as f:
-            for idx, query in enumerate(lines, 1):
-                if query in processed:
-                    continue
+        # 始终以 'w' 重写文件，先把已成功的缓存写回（不会丢数据，也清掉旧的 % Failed），
+        # 再处理剩余条目并追加。
+        with open(output_file, 'w', encoding='utf-8') as f:
+            for query in lines:
+                if query in done:
+                    f.write(f"% Query: {query}\n{done[query]}\n\n")
+            f.flush()
 
+            for idx, query in enumerate(todo, 1):
                 display = query[:50] + "..." if len(query) > 50 else query
-                print(f"\n🔍 [{idx}/{len(lines)}] {display}")
+                print(f"\n🔍 [{idx}/{len(todo)}] {display}")
 
                 f.write(f"% Query: {query}\n")
                 f.flush()
