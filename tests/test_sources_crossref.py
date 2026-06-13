@@ -1,7 +1,7 @@
 import httpx
 import respx
 
-from scholar_bibtex.sources.crossref import search
+from scholar_bibtex.sources.crossref import search, fetch_venue
 
 
 RESP = {
@@ -39,3 +39,32 @@ async def test_search_empty_on_no_items():
     async with httpx.AsyncClient() as client:
         cands = await search(client, "nothing", mailto=None)
     assert cands == []
+
+
+@respx.mock
+async def test_fetch_venue_prefers_container_title():
+    respx.get("https://api.crossref.org/works/10.1/journal").mock(
+        return_value=httpx.Response(200, json={"message": {
+            "container-title": ["Nature"], "institution": []}}))
+    async with httpx.AsyncClient() as client:
+        v = await fetch_venue(client, "10.1/journal")
+    assert v == "Nature"
+
+
+@respx.mock
+async def test_fetch_venue_falls_back_to_institution_for_preprint():
+    respx.get("https://api.crossref.org/works/10.1101/preprint").mock(
+        return_value=httpx.Response(200, json={"message": {
+            "container-title": [], "institution": [{"name": "bioRxiv"}]}}))
+    async with httpx.AsyncClient() as client:
+        v = await fetch_venue(client, "10.1101/preprint")
+    assert v == "bioRxiv"
+
+
+@respx.mock
+async def test_fetch_venue_none_when_absent():
+    respx.get("https://api.crossref.org/works/10.1/x").mock(
+        return_value=httpx.Response(200, json={"message": {}}))
+    async with httpx.AsyncClient() as client:
+        v = await fetch_venue(client, "10.1/x")
+    assert v is None

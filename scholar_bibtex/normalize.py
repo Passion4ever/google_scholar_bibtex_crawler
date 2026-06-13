@@ -43,6 +43,25 @@ def _format_name(name: str) -> str:
     return out
 
 
+_VENUE_RE = re.compile(r"(?i)[,{]\s*(journal|booktitle)\s*=")
+
+
+def has_venue(bibtex: str) -> bool:
+    """BibTeX 是否已有 journal/booktitle(venue)字段。"""
+    return bool(_VENUE_RE.search(bibtex))
+
+
+def inject_journal(bibtex: str, venue: str) -> str:
+    """给缺 venue 的条目补上 journal={venue}(已有则不动)。"""
+    if not venue or has_venue(bibtex):
+        return bibtex
+    idx = bibtex.rfind("}")
+    if idx == -1:
+        return bibtex
+    head = bibtex[:idx].rstrip().rstrip(",")
+    return f"{head}, journal={{{venue}}} {bibtex[idx:]}"
+
+
 def normalize_authors(field: str) -> str:
     """把作者字段(以 ' and ' 分隔)里每个名字统一成 `姓, 名`。"""
     parts = re.split(r"\s+and\s+", field.strip())

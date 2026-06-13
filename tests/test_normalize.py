@@ -1,4 +1,6 @@
-from scholar_bibtex.normalize import normalize_bibtex, normalize_authors, make_citekey
+from scholar_bibtex.normalize import (
+    normalize_bibtex, normalize_authors, make_citekey, has_venue, inject_journal,
+)
 
 
 RAW = """@article{Key2023,
@@ -81,6 +83,26 @@ def test_make_citekey_scheme():
 def test_make_citekey_fallback_to_existing_id():
     entry = {"ID": "fallback_key", "title": "X"}  # 无 author/year
     assert make_citekey(entry) == "fallback_key"
+
+
+def test_has_venue():
+    assert has_venue("@article{x, title={T}, journal={Nature}, year={2023}}")
+    assert has_venue("@inproceedings{x, booktitle={NeurIPS}}")
+    assert not has_venue("@article{x, title={T}, publisher={openRxiv}, year={2024}}")
+
+
+def test_inject_journal_adds_when_missing():
+    raw = "@article{x, title={T}, publisher={openRxiv}, month=Aug }"
+    out = inject_journal(raw, "bioRxiv")
+    assert "journal={bioRxiv}" in out
+    # 注入后仍可被归一化解析,且 journal 落位
+    norm = normalize_bibtex(out)
+    assert "journal = {bioRxiv}" in norm
+
+
+def test_inject_journal_noop_when_present():
+    raw = "@article{x, title={T}, journal={Nature}}"
+    assert inject_journal(raw, "bioRxiv") == raw
 
 
 def test_normalize_bibtex_unifies_key():

@@ -3,6 +3,7 @@ import logging
 
 from . import crossref, openalex, dblp, semantic_scholar, scholar
 from .doi_negotiation import fetch_bibtex as _doi_fetch
+from ..normalize import has_venue, inject_journal
 from ..ratelimit import RateLimiter
 
 logger = logging.getLogger(__name__)
@@ -22,7 +23,14 @@ class DefaultSources:
 
     async def doi_fetch(self, client, doi, mailto=None):
         async with self._limiters["doi"]:
-            return await _doi_fetch(client, doi, mailto=mailto)
+            bib = await _doi_fetch(client, doi, mailto=mailto)
+        # 预印本等缺 journal 的条目:补查 Crossref venue 填进 journal(如 bioRxiv)
+        if bib and not has_venue(bib):
+            async with self._limiters["crossref"]:
+                venue = await crossref.fetch_venue(client, doi, mailto=mailto)
+            if venue:
+                bib = inject_journal(bib, venue)
+        return bib
 
     async def search_all(self, client, title, cfg):
         tasks = []

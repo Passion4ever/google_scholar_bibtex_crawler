@@ -46,3 +46,25 @@ async def search(
             year=_year(it),
         ))
     return out
+
+
+async def fetch_venue(client: httpx.AsyncClient, doi: str,
+                      mailto: Optional[str] = None) -> Optional[str]:
+    """从 Crossref JSON 取 venue:期刊用 container-title,预印本用 institution(如 bioRxiv)。"""
+    headers = {"User-Agent": USER_AGENT(mailto)}
+    params = {"mailto": mailto} if mailto else None
+    try:
+        resp = await client.get(f"https://api.crossref.org/works/{doi}",
+                                params=params, headers=headers, timeout=_TIMEOUT)
+        resp.raise_for_status()
+        msg = resp.json()["message"]
+    except (httpx.HTTPError, KeyError, ValueError) as e:
+        logger.debug("Crossref venue 查询失败: %s", e)
+        return None
+    ct = msg.get("container-title") or []
+    if ct and ct[0]:
+        return ct[0]
+    inst = msg.get("institution") or []
+    if inst and inst[0].get("name"):
+        return inst[0]["name"]
+    return None
