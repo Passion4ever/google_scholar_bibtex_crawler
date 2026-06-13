@@ -1,4 +1,6 @@
-from scholar_bibtex.matching import normalize_title, score_titles, verdict, pick_best
+from scholar_bibtex.matching import (
+    normalize_title, score_titles, verdict, pick_best, is_annotation_doi,
+)
 from scholar_bibtex.models import Candidate
 
 
@@ -69,3 +71,29 @@ def test_pick_best_returns_none_when_all_below_low():
     cands = [Candidate(title="Unrelated work about cats", source="crossref")]
     best = pick_best("Quantum gravity and black holes", cands)
     assert best is None
+
+
+def test_is_annotation_doi():
+    assert is_annotation_doi("10.3410/f.740477162.793587584")   # F1000
+    assert is_annotation_doi("10.1530/ey.19.15.15")             # Bioscientifica Year Book
+    assert not is_annotation_doi("10.1126/science.abj8754")     # 真实论文
+    assert not is_annotation_doi(None)
+
+
+def test_pick_best_excludes_annotation_doi_even_at_score_100():
+    # 逐字标题的年鉴/评论条目(满分)不能被选中,应让位给真实论文
+    title = "Accurate prediction of protein structures using a three-track neural network"
+    cands = [
+        Candidate(title=title, doi="10.1530/ey.19.15.15", source="crossref"),   # 年鉴评注
+        Candidate(title=title, doi="10.1126/science.abj8754", source="crossref"),  # 真实论文
+    ]
+    best = pick_best(title, cands)
+    assert best is not None
+    assert best.candidate.doi == "10.1126/science.abj8754"
+
+
+def test_pick_best_none_when_only_annotation_match():
+    # 只有注解条目命中时,宁可返回 None(失败安全)也不拿错
+    title = "Some paper title verbatim"
+    cands = [Candidate(title=title, doi="10.3410/f.123.456", source="crossref")]
+    assert pick_best(title, cands) is None

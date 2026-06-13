@@ -1,0 +1,32 @@
+# 样例输入:de novo 蛋白质设计领域的真实参考文献
+# 来源: Yang et al. (2026) "The past, present and future of de novo protein design", Nature 652.
+# 每行一条 DOI 或论文标题;# 开头与空行会被忽略。
+
+# --- DOI(走 content negotiation 取权威 BibTeX)---
+10.1038/s41586-023-06415-8
+10.1101/2024.08.23.608890
+10.1101/2025.10.12.681920
+
+# --- 论文标题(先消歧到 DOI 再取权威)---
+Principles that govern the folding of protein chains
+Design of a novel globular protein fold with atomic-level accuracy
+Highly accurate protein structure prediction with AlphaFold
+Accurate structure prediction of biomolecular interactions with AlphaFold 3
+Generalized biomolecular modeling and design with RoseTTAFold All-Atom
+Accurate prediction of protein structures and interactions using a three-track neural network
+De novo protein design by deep network hallucination
+Illuminating protein space with a programmable generative model
+De novo design of high-affinity protein binders with AlphaProteo
+De novo protein design with a denoising diffusion network independent of pretrained structure prediction models
+Robust deep learning-based protein sequence design using ProteinMPNN
+Evolutionary-scale prediction of atomic-level protein structure with a language model
+Computational design of transmembrane pores
+Accurate de novo design of membrane-traversing macrocycles
+Cyclic peptide structure prediction and design using AlphaFold2
+Programmable design of orthogonal protein heterodimers
+HELM-GPT: de novo macrocyclic peptide design using generative pre-trained transformer
+De novo design of potent and resilient hACE2 decoys to neutralize SARS-CoV-2
+Computational design of environmental sensors for the potent opioid fentanyl
+Precision is essential for efficient catalysis in an evolved Kemp eliminase
+A computationally engineered RAS rheostat reveals RAS-ERK signaling dynamics
+Mega-scale experimental analysis of protein folding stability in biology and design

@@ -19,7 +19,7 @@ def _year(item: dict) -> Optional[int]:
 
 
 async def search(
-    client: httpx.AsyncClient, title: str, mailto: Optional[str] = None, rows: int = 5
+    client: httpx.AsyncClient, title: str, mailto: Optional[str] = None, rows: int = 15
 ) -> List[Candidate]:
     params = {"query.bibliographic": title, "rows": rows}
     if mailto:

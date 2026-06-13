@@ -22,7 +22,7 @@ async def search(
     title: str,
     api_key: Optional[str] = None,
     mailto: Optional[str] = None,
-    rows: int = 5,
+    rows: int = 15,
 ) -> List[Candidate]:
     if not api_key:
         logger.debug("OpenAlex 未配置 API key,跳过")

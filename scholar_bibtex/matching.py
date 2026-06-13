@@ -13,6 +13,17 @@ HIGH_DEFAULT = 95.0
 LOW_DEFAULT = 85.0
 DEFAULT_SOURCE_PRIORITY = ["crossref", "openalex", "dblp", "semantic_scholar"]
 
+# "注解某论文"的 DOI 注册库:它们逐字复制原文标题(相似度会到 100),
+# 但 DOI 指向的是评论/年鉴条目而非论文本身。取其 BibTeX 会拿错东西。
+#   10.3410/f.  — F1000 / Faculty Opinions recommendations
+#   10.1530/ey. — Bioscientifica "Year Book" 评注
+_ANNOTATION_DOI = re.compile(r"^10\.(?:3410/f\.|1530/ey\.)", re.IGNORECASE)
+
+
+def is_annotation_doi(doi) -> bool:
+    """该 DOI 是否为"注解某论文"的条目(应排除,避免拿错)。"""
+    return bool(doi and _ANNOTATION_DOI.match(doi))
+
 
 def normalize_title(title: str) -> str:
     t = title.lower()
@@ -59,6 +70,9 @@ def pick_best(
     排序键:分数降序 → 有DOI优先 → 源优先级。
     """
     priority = source_priority or DEFAULT_SOURCE_PRIORITY
+
+    # 剔除"注解某论文"的 DOI 条目(逐字标题会骗到满分,但取回的是评论)
+    candidates = [c for c in candidates if not is_annotation_doi(c.doi)]
 
     def rank(c: Candidate):
         s = score_titles(query_title, c.title)

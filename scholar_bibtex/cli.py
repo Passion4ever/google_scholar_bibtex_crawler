@@ -34,7 +34,8 @@ def parse_args(argv=None):
 
 async def run_batch(input_file: str, output_file: str, *, cfg: Config, sources) -> dict:
     with open(input_file, "r", encoding="utf-8") as f:
-        lines = [ln.strip() for ln in f if ln.strip()]
+        lines = [ln.strip() for ln in f
+                 if ln.strip() and not ln.lstrip().startswith("#")]
 
     done = load_done(output_file)
     todo = [q for q in lines if q not in done]

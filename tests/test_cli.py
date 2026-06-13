@@ -46,6 +46,22 @@ def test_run_batch_writes_output_and_failed(tmp_path):
     assert "10.2000/missing" in failed
 
 
+def test_run_batch_skips_comment_and_blank_lines(tmp_path):
+    inp = tmp_path / "in.txt"
+    inp.write_text("# a comment\n\n10.1038/ok\n  # indented comment\n", encoding="utf-8")
+    out = tmp_path / "out.bib"
+    src = StubSources({"10.1038/ok": "@article{ok,\n title={OK}\n}"})
+    cfg = Config.from_env()
+    cfg.use_scholar_fallback = False
+
+    stats = asyncio.run(run_batch(str(inp), str(out), cfg=cfg, sources=src))
+
+    assert stats["success"] == 1
+    assert stats["failed"] == []  # 注释行不应被当作查询
+    text = out.read_text(encoding="utf-8")
+    assert "comment" not in text
+
+
 def test_run_batch_resumes_skips_done(tmp_path):
     inp = tmp_path / "in.txt"
     inp.write_text("10.1038/ok\n", encoding="utf-8")

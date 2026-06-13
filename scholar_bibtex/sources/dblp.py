@@ -19,7 +19,7 @@ def _int(val) -> Optional[int]:
 
 
 async def search(
-    client: httpx.AsyncClient, title: str, mailto: Optional[str] = None, rows: int = 5
+    client: httpx.AsyncClient, title: str, mailto: Optional[str] = None, rows: int = 15
 ) -> List[Candidate]:
     params = {"q": title, "format": "json", "h": rows}
     headers = {"User-Agent": USER_AGENT(mailto)}

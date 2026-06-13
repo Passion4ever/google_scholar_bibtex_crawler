@@ -17,7 +17,7 @@ async def search(
     title: str,
     api_key: Optional[str] = None,
     mailto: Optional[str] = None,
-    rows: int = 5,
+    rows: int = 15,
 ) -> List[Candidate]:
     params = {"query": title, "limit": rows, "fields": _FIELDS}
     headers = {"User-Agent": USER_AGENT(mailto)}
