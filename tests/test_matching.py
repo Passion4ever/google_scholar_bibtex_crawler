@@ -10,10 +10,24 @@ def test_exact_match_scores_100():
     assert score_titles("Deep Learning", "Deep Learning") == 100
 
 
-def test_word_order_insensitive():
+def test_word_order_matters_for_titles():
+    # 标题顺序敏感:重排词序的不同标题不应判为高分(防"拿错论文")
     s = score_titles("protein design machine learning",
                      "machine learning protein design")
-    assert s >= 95
+    assert s < 95
+
+
+def test_reordered_different_paper_not_auto_accepted():
+    # 真实回归:"Attention is all you need"(Transformer)vs
+    # "Is Attention All You Need?"(另一篇)—— 不能落入 high 自动采纳区
+    s = score_titles("Attention is all you need", "Is Attention All You Need?")
+    assert s < 95  # 落入存疑或拒绝,而非自动采纳
+
+
+def test_punctuation_and_case_still_match():
+    # 仅大小写/标点差异仍应判为同一标题
+    s = score_titles("Attention is all you need", "Attention Is All You Need")
+    assert s >= 99
 
 
 def test_wrong_paper_scores_low():

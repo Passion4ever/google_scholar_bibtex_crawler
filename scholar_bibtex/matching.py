@@ -22,7 +22,14 @@ def normalize_title(title: str) -> str:
 
 
 def score_titles(a: str, b: str) -> float:
-    return fuzz.token_sort_ratio(normalize_title(a), normalize_title(b))
+    """标题相似度。用顺序敏感的 ratio,而非 token_sort_ratio。
+
+    标题是有序的:'Attention is all you need' 与 'Is Attention All You
+    Need?' 是不同论文,token_sort 会把它们判为 100(词序无关),造成
+    严重的"拿错论文"。ratio 对前者给 ~88,落入存疑区间而非自动采纳。
+    (作者姓名顺序/缩写的不一致是输出问题,已由权威 DOI 源解决,与标题匹配无关。)
+    """
+    return fuzz.ratio(normalize_title(a), normalize_title(b))
 
 
 def verdict(score: float, high: float = HIGH_DEFAULT, low: float = LOW_DEFAULT) -> str:

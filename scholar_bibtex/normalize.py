@@ -13,6 +13,9 @@ def normalize_bibtex(raw: str) -> str:
     try:
         parser = BibTexParser(common_strings=True)
         parser.ignore_nonstandard_types = False
+        # 不解析字符串宏:doi.org 的 BibTeX 用裸 `month=July`,
+        # 解析宏会抛 UndefinedString。保留宏原样即可正确重写。
+        parser.interpolate_strings = False
         db = bibtexparser.loads(raw, parser=parser)
         if not db.entries:
             return raw
