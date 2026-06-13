@@ -32,7 +32,8 @@ def parse_args(argv=None):
     return p.parse_args(argv)
 
 
-async def run_batch(input_file: str, output_file: str, *, cfg: Config, sources) -> dict:
+async def run_batch(input_file: str, output_file: str, *, cfg: Config,
+                    sources, on_progress=None) -> dict:
     with open(input_file, "r", encoding="utf-8") as f:
         lines = [ln.strip() for ln in f
                  if ln.strip() and not ln.lstrip().startswith("#")]
@@ -44,11 +45,17 @@ async def run_batch(input_file: str, output_file: str, *, cfg: Config, sources) 
     failed = []
     review = []
     success = 0
+    total = len(todo)
+    counter = {"n": 0}
 
     async with httpx.AsyncClient() as client:
         async def work(query):
             async with sem:
-                return await resolve(query, client=client, sources=sources, cfg=cfg)
+                r = await resolve(query, client=client, sources=sources, cfg=cfg)
+            counter["n"] += 1   # asyncio 单线程,await 之间无抢占,计数安全
+            if on_progress:
+                on_progress(counter["n"], total, r)
+            return r
 
         results = await asyncio.gather(*[work(q) for q in todo]) if todo else []
 
@@ -98,7 +105,19 @@ def main(argv=None):
     print("📚 Scholar BibTeX (API-first)")
     print(f"📂 输入: {args.input}  →  📄 输出: {output}")
 
-    stats = asyncio.run(run_batch(args.input, output, cfg=cfg, sources=DefaultSources()))
+    def on_progress(i, total, r):
+        if not r.ok:
+            icon, tag = "❌", "失败"
+        elif r.review:
+            icon, tag = "⚠️", "存疑"
+        else:
+            icon, tag = "✅", r.confidence
+        q = r.query if len(r.query) <= 55 else r.query[:55] + "…"
+        print(f"  [{i}/{total}] {icon} {tag:<9} {q}", flush=True)
+
+    print("⏳ 处理中(逐条完成即显示)…\n")
+    stats = asyncio.run(run_batch(args.input, output, cfg=cfg,
+                                  sources=DefaultSources(), on_progress=on_progress))
 
     print(f"\n🎉 完成! 成功 {stats['success']} | "
           f"存疑 {len(stats['review'])} | 失败 {len(stats['failed'])} | "
