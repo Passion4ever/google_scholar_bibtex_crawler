@@ -105,14 +105,16 @@ async def fetch_one(browser, query: str) -> Optional[str]:
     await cite.click()
     await asyncio.sleep(2)
 
-    # 引用弹窗里的 BibTeX 链接
+    # 引用弹窗里的 BibTeX 链接(return_enclosing_element=False 取到 <a> 本身)
     try:
-        bib_link = await page.find("BibTeX", best_match=True, timeout=10)
+        bib_link = await page.find("BibTeX", best_match=True,
+                                   return_enclosing_element=False, timeout=10)
     except Exception:
         return None
     if not bib_link:
         return None
-    href = await bib_link.get_attribute("href")
+    # nodriver 的 Element 用 .attrs 读 HTML 属性(没有 get_attribute 方法)
+    href = bib_link.attrs.get("href")
     if not href:
         return None
 
