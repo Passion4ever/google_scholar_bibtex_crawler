@@ -51,8 +51,54 @@ def random_delay(min_sec=MIN_DELAY, max_sec=MAX_DELAY):
     return delay
 
 
+def _detect_chrome_major():
+    """探测本机 Chrome 主版本号(用于匹配 ChromeDriver,避免版本不一致报错)。"""
+    import subprocess
+    candidates = [
+        "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",  # macOS
+        "google-chrome", "google-chrome-stable", "chromium", "chrome",   # Linux/PATH
+    ]
+    for path in candidates:
+        try:
+            out = subprocess.check_output([path, "--version"], text=True, timeout=10)
+        except (OSError, subprocess.SubprocessError):
+            continue
+        import re
+        m = re.search(r"(\d+)\.\d+", out)
+        if m:
+            return int(m.group(1))
+    return None
+
+
+def _create_selenium_browser(proxy=None):
+    """标准 Selenium 兜底(Selenium Manager 自动匹配驱动,兼容新版 Chrome)。
+
+    比 undetected-chromedriver 更易被 Google Scholar 检测,但能稳定启动。
+    """
+    from selenium import webdriver
+    from selenium.webdriver.chrome.options import Options
+    o = Options()
+    o.add_argument('--no-sandbox')
+    o.add_argument('--disable-dev-shm-usage')
+    o.add_argument('--window-size=1920,1080')
+    o.add_argument('--lang=en-US')
+    o.add_argument('--disable-blink-features=AutomationControlled')
+    o.add_experimental_option('excludeSwitches', ['enable-automation'])
+    o.add_experimental_option('useAutomationExtension', False)
+    if proxy:
+        o.add_argument(f'--proxy-server={proxy}')
+    driver = webdriver.Chrome(options=o)
+    try:  # 抹掉 navigator.webdriver,稍微降低被识别概率
+        driver.execute_cdp_cmd(
+            'Page.addScriptToEvaluateOnNewDocument',
+            {'source': "Object.defineProperty(navigator,'webdriver',{get:()=>undefined})"})
+    except Exception:
+        pass
+    return driver
+
+
 def create_browser(proxy=None):
-    """创建浏览器"""
+    """创建浏览器:优先 undetected-chromedriver,失败则回退标准 Selenium。"""
     options = uc.ChromeOptions()
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
@@ -60,7 +106,14 @@ def create_browser(proxy=None):
     options.add_argument('--lang=en-US')
     if proxy:
         options.add_argument(f'--proxy-server={proxy}')
-    return uc.Chrome(options=options)
+    version = _detect_chrome_major()
+    if version:
+        logger.debug("检测到 Chrome 主版本: %s", version)
+    try:
+        return uc.Chrome(options=options, version_main=version)
+    except Exception as e:
+        logger.warning("undetected-chromedriver 启动失败(%s);回退到标准 Selenium", e)
+        return _create_selenium_browser(proxy)
 
 
 def save_cookies(browser):
