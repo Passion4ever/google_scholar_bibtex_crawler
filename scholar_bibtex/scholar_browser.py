@@ -5,15 +5,20 @@
   (uc 3.5.5 已停更,驱动版本对不上新版 Chrome 就崩)。
 - 更隐身,新 IP 上验证码更少。
 
+浏览器:优先用与系统隔离的独立 Chromium(Playwright 提供,不碰你的 Google
+Chrome/Helium),没有则退回系统 Chrome。获取隔离 Chromium:
+    pip install playwright && playwright install chromium
+
 注意:Google Scholar 的拦截是按 IP/行为来的,任何工具都躲不开已被标记的 IP。
-遇到验证码时本脚本会暂停,等你在浏览器里手动完成后按 Enter 继续;cookie 会持久化,
-解一次后续会少很多。
+遇到验证码时本脚本会暂停(并弹系统通知+响铃),等你在浏览器里手动完成后按 Enter
+继续;cookie/配置会持久化,解一次后续会少很多。
 
 用法:
     python -m scholar_bibtex.scholar_browser <input.txt> [output.bib]
 """
 import argparse
 import asyncio
+import glob
 import os
 import subprocess
 import sys
@@ -35,6 +40,31 @@ CITE_SELECTOR = "a.gs_or_cit"
 
 # 拦截/验证码信号(出现在页面 URL 或正文)
 _BLOCK_MARKERS = ("/sorry/", "unusual traffic", "not a robot", "recaptcha")
+
+
+def find_isolated_chromium(bases=None) -> Optional[str]:
+    """找 Playwright 装的独立 Chromium(与系统 Chrome/Helium 隔离),没有返回 None。
+
+    通过 `pip install playwright && playwright install chromium` 获得。
+    """
+    if bases is None:
+        bases = [
+            os.path.expanduser("~/Library/Caches/ms-playwright"),  # macOS
+            os.path.expanduser("~/.cache/ms-playwright"),          # Linux
+        ]
+    pats = [
+        "chromium-*/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing",
+        "chromium-*/chrome-mac/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing",
+        "chromium-*/chrome-linux/chrome",
+    ]
+    matches = []
+    for base in bases:
+        if os.path.isdir(base):
+            for pat in pats:
+                matches.extend(glob.glob(os.path.join(base, pat)))
+    if not matches:
+        return None
+    return sorted(matches)[-1]  # 版本号最大的
 
 
 async def _count_results(page) -> int:
@@ -162,8 +192,15 @@ async def run(input_file: str, output_file: str):
     if done:
         print(f"⏩ 断点续传:跳过已完成 {len(done)} 条,待处理 {len(todo)} 条")
 
-    # 用固定配置目录启动:登录状态/cookie 跨次保留
-    browser = await nodriver.start(headless=False, user_data_dir=PROFILE_DIR)
+    # 优先用 Playwright 的独立 Chromium(隔离,不碰系统 Chrome/Helium);否则退回系统 Chrome
+    start_kwargs = {"headless": False, "user_data_dir": PROFILE_DIR}
+    exe = find_isolated_chromium()
+    if exe:
+        start_kwargs["browser_executable_path"] = exe
+        print("🧩 浏览器: 独立 Chromium (Playwright,与系统浏览器隔离)")
+    else:
+        print("🧩 浏览器: 系统 Chrome  (装 playwright 可换成隔离 Chromium,见 README)")
+    browser = await nodriver.start(**start_kwargs)
     if os.path.exists(COOKIE_FILE):
         try:
             await browser.cookies.load(COOKIE_FILE)
