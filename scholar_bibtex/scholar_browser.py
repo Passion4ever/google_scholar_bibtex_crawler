@@ -28,6 +28,8 @@ except ImportError:
     nodriver = None
 
 COOKIE_FILE = ".google_scholar_nodriver_cookies.dat"
+# 固定的浏览器配置目录:保留登录状态/cookie,登录 Google 后验证码大幅减少
+PROFILE_DIR = os.path.expanduser("~/.scholar_bibtex_chrome_profile")
 RESULT_SELECTOR = ".gs_r.gs_or.gs_scl"
 CITE_SELECTOR = "a.gs_or_cit"
 
@@ -160,7 +162,8 @@ async def run(input_file: str, output_file: str):
     if done:
         print(f"⏩ 断点续传:跳过已完成 {len(done)} 条,待处理 {len(todo)} 条")
 
-    browser = await nodriver.start(headless=False)
+    # 用固定配置目录启动:登录状态/cookie 跨次保留
+    browser = await nodriver.start(headless=False, user_data_dir=PROFILE_DIR)
     if os.path.exists(COOKIE_FILE):
         try:
             await browser.cookies.load(COOKIE_FILE)
@@ -223,7 +226,8 @@ def main(argv=None):
         sys.exit(1)
     output = args.output or os.path.splitext(args.input)[0] + ".bib"
     print("📚 Google Scholar BibTeX (nodriver 浏览器版)")
-    print(f"📂 输入: {args.input}  →  📄 输出: {output}\n")
+    print(f"📂 输入: {args.input}  →  📄 输出: {output}")
+    print("💡 提示: 首次在弹出的浏览器里登录你的 Google 账号,之后验证码会大幅减少\n")
     nodriver.loop().run_until_complete(run(args.input, output))
 
 
