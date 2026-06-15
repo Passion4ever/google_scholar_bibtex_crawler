@@ -1,5 +1,7 @@
-# Cookie 缓存
+# Cookie 缓存 / 浏览器配置
 .google_scholar_cookies.json
+.google_scholar_nodriver_cookies.dat
+.scholar_bibtex_chrome_profile/
 
 # Python
 __pycache__/

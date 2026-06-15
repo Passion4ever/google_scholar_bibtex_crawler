@@ -1,2 +1,12 @@
+httpx>=0.27
+rapidfuzz>=3.0
+bibtexparser>=1.4,<2
+# 可选: Google Scholar 浏览器版抓取(需本机 Chrome)
+# nodriver: CDP 直连,无需 ChromeDriver,无版本匹配问题(推荐)
+nodriver>=0.50
+# playwright: 提供与系统隔离的 Chromium(playwright install chromium),
+# nodriver 会自动优先用它,不碰系统 Chrome/Helium(推荐)
+playwright>=1.40
+# 旧版浏览器兜底(uc 3.5.5 已停更,新版 Chrome 易失败)
 undetected-chromedriver>=3.5.0
 selenium>=4.0.0
