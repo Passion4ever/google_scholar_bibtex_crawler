@@ -20,6 +20,7 @@ import argparse
 import asyncio
 import glob
 import os
+import random
 import subprocess
 import sys
 from typing import Optional
@@ -33,8 +34,13 @@ except ImportError:
     nodriver = None
 
 COOKIE_FILE = ".google_scholar_nodriver_cookies.dat"
-# 固定的浏览器配置目录:保留登录状态/cookie,登录 Google 后验证码大幅减少
+# 固定的浏览器配置目录:保留 cookie/已过验证码的会话信任,后续验证码大幅减少
 PROFILE_DIR = os.path.expanduser("~/.scholar_bibtex_chrome_profile")
+
+
+async def _human_sleep(lo: float, hi: float):
+    """随机化的"人类停顿",降低被识别为机器的概率。"""
+    await asyncio.sleep(random.uniform(lo, hi))
 RESULT_SELECTOR = ".gs_r.gs_or.gs_scl"
 CITE_SELECTOR = "a.gs_or_cit"
 
@@ -65,6 +71,28 @@ def find_isolated_chromium(bases=None) -> Optional[str]:
     if not matches:
         return None
     return sorted(matches)[-1]  # 版本号最大的
+
+
+def ensure_isolated_chromium() -> Optional[str]:
+    """确保有隔离 Chromium 可用:没有就用 Playwright 自动下载。返回路径或 None。
+
+    让普通用户零配置:只要装了 playwright,首次自动下载隔离 Chromium,
+    全程不碰系统 Chrome/Helium。
+    """
+    exe = find_isolated_chromium()
+    if exe:
+        return exe
+    import importlib.util
+    if importlib.util.find_spec("playwright") is None:
+        return None  # 没装 playwright,交给调用方提示
+    print("⬇️  首次运行:用 Playwright 下载隔离 Chromium(约 150MB,仅一次)…")
+    try:
+        subprocess.run([sys.executable, "-m", "playwright", "install", "chromium"],
+                       check=True)
+    except Exception as e:
+        print(f"   下载失败: {e}")
+        return None
+    return find_isolated_chromium()
 
 
 async def _count_results(page) -> int:
@@ -137,11 +165,11 @@ async def fetch_one(browser, query: str) -> Optional[str]:
     """搜索一条 → 点引用 → 取 BibTeX。失败返回 None。"""
     url = "https://scholar.google.com/scholar?q=" + query.replace(" ", "+")
     page = await browser.get(url)
-    await asyncio.sleep(3)
+    await _human_sleep(2.5, 4.5)
 
     if await is_blocked(page):
         page = await _solve_captcha_then_reload(browser, page, url)
-        await asyncio.sleep(3)
+        await _human_sleep(2.5, 4.5)
         if await is_blocked(page):
             return None
 
@@ -153,7 +181,7 @@ async def fetch_one(browser, query: str) -> Optional[str]:
     if not cite:
         return None
     await cite.click()
-    await asyncio.sleep(2)
+    await _human_sleep(1.5, 3.0)
 
     # 引用弹窗里的 BibTeX 链接(return_enclosing_element=False 取到 <a> 本身)
     try:
@@ -169,10 +197,10 @@ async def fetch_one(browser, query: str) -> Optional[str]:
         return None
 
     bib_page = await browser.get(href)
-    await asyncio.sleep(2)
+    await _human_sleep(1.5, 3.0)
     if await is_blocked(bib_page):
         bib_page = await _solve_captcha_then_reload(browser, bib_page, href)
-        await asyncio.sleep(2)
+        await _human_sleep(1.5, 3.0)
     try:
         text = await bib_page.evaluate(
             "(document.querySelector('pre')||document.body).innerText")
@@ -192,14 +220,14 @@ async def run(input_file: str, output_file: str):
     if done:
         print(f"⏩ 断点续传:跳过已完成 {len(done)} 条,待处理 {len(todo)} 条")
 
-    # 优先用 Playwright 的独立 Chromium(隔离,不碰系统 Chrome/Helium);否则退回系统 Chrome
+    # 优先用 Playwright 的独立 Chromium(隔离,不碰系统 Chrome/Helium),没有则自动下载
     start_kwargs = {"headless": False, "user_data_dir": PROFILE_DIR}
-    exe = find_isolated_chromium()
+    exe = ensure_isolated_chromium()
     if exe:
         start_kwargs["browser_executable_path"] = exe
         print("🧩 浏览器: 独立 Chromium (Playwright,与系统浏览器隔离)")
     else:
-        print("🧩 浏览器: 系统 Chrome  (装 playwright 可换成隔离 Chromium,见 README)")
+        print("🧩 浏览器: 系统 Chrome 回退  (建议 pip install playwright 用隔离 Chromium)")
     browser = await nodriver.start(**start_kwargs)
     if os.path.exists(COOKIE_FILE):
         try:
@@ -233,7 +261,7 @@ async def run(input_file: str, output_file: str):
                 failed.append(q)
                 print("   ❌ 失败")
             f.flush()
-            await asyncio.sleep(5)  # 礼貌延迟,降低被封概率
+            await _human_sleep(4, 8)  # 随机礼貌延迟,降低被识别/被封概率
 
     try:
         await browser.cookies.save(COOKIE_FILE)
