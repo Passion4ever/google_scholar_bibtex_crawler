@@ -227,7 +227,7 @@ def main(argv=None):
     output = args.output or os.path.splitext(args.input)[0] + ".bib"
     print("📚 Google Scholar BibTeX (nodriver 浏览器版)")
     print(f"📂 输入: {args.input}  →  📄 输出: {output}")
-    print("💡 提示: 首次在弹出的浏览器里登录你的 Google 账号,之后验证码会大幅减少\n")
+    print("💡 提示: 解过的验证码会记在浏览器配置里,后续运行验证码会变少(无需登录)\n")
     nodriver.loop().run_until_complete(run(args.input, output))
 
 
