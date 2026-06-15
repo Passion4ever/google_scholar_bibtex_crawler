@@ -15,6 +15,7 @@
 import argparse
 import asyncio
 import os
+import subprocess
 import sys
 from typing import Optional
 
@@ -64,6 +65,21 @@ async def is_blocked(page) -> bool:
     return looks_blocked(url, html)
 
 
+def _notify(message: str):
+    """提醒用户来过验证码:终端响铃 + macOS 系统通知(其他平台静默降级)。"""
+    print("\a", end="", flush=True)  # 终端响铃
+    if sys.platform == "darwin":
+        try:
+            subprocess.run(
+                ["osascript", "-e",
+                 f'display notification "{message}" with title "Scholar BibTeX" '
+                 f'sound name "Glass"'],
+                timeout=5, check=False,
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except Exception:
+            pass
+
+
 async def _wait_for_human(prompt: str):
     """异步等待用户在终端按 Enter(不阻塞事件循环)。"""
     loop = asyncio.get_event_loop()
@@ -71,9 +87,11 @@ async def _wait_for_human(prompt: str):
 
 
 async def _solve_captcha_then_reload(browser, page, url):
+    _notify("检测到验证码,请到浏览器窗口手动完成")
     print("\n" + "─" * 50)
     print("🤖 检测到 Google Scholar 验证码/拦截")
     print("   请在弹出的浏览器窗口里手动完成验证,然后回到这里按 Enter")
+    print("   (若窗口黑屏,点一下/拖动它即可重绘)")
     print("─" * 50)
     await _wait_for_human("完成后按 Enter 继续... ")
     try:
