@@ -126,15 +126,21 @@ async def is_blocked(page) -> bool:
 
 
 def _notify(message: str):
-    """提醒用户来过验证码:终端响铃 + macOS 系统通知(其他平台静默降级)。"""
-    print("\a", end="", flush=True)  # 终端响铃
+    """提醒用户来过验证码:声音(可靠)+ 横幅通知(需权限)+ 终端响铃。"""
+    print("\a", end="", flush=True)  # 终端响铃(可能被终端静音)
     if sys.platform == "darwin":
+        # 1) 直接播系统音:不需要通知权限,最可靠
         try:
-            subprocess.run(
+            subprocess.Popen(["afplay", "/System/Library/Sounds/Glass.aiff"],
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except Exception:
+            pass
+        # 2) 横幅通知:需要通知权限(System Settings → 通知),作为补充
+        try:
+            subprocess.Popen(
                 ["osascript", "-e",
                  f'display notification "{message}" with title "Scholar BibTeX" '
                  f'sound name "Glass"'],
-                timeout=5, check=False,
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         except Exception:
             pass
