@@ -17,7 +17,6 @@ async def resolve(query: str, *, client: httpx.AsyncClient, sources, cfg: Config
     sources 需提供:
       - async doi_fetch(client, doi, mailto) -> Optional[str]
       - async search_all(client, title, cfg) -> list[Candidate]
-      - async scholar_fetch(query, proxy) -> Optional[str]
     """
     kind, val = classify(query)
 
@@ -61,13 +60,6 @@ async def resolve(query: str, *, client: httpx.AsyncClient, sources, cfg: Config
                 match_title=cand.title, score=decision.score, review=review,
                 error=error if review else None,
             )
-
-    # 兜底:Google Scholar
-    if cfg.use_scholar_fallback:
-        bib = await sources.scholar_fetch(query, proxy=cfg.proxy)
-        if bib:
-            return Result(query=query, bibtex=normalize_bibtex(bib),
-                          source="scholar", confidence="review", review=True)
 
     return Result(query=query, confidence="failed",
                   error="no acceptable match across sources")

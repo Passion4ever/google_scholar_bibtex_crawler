@@ -28,7 +28,6 @@ def parse_args(argv=None):
     p.add_argument("--no-openalex", action="store_true")
     p.add_argument("--no-semantic-scholar", action="store_true")
     p.add_argument("--no-dblp", action="store_true")
-    p.add_argument("--no-scholar", action="store_true", help="禁用 Scholar 兜底")
     return p.parse_args(argv)
 
 
@@ -99,8 +98,6 @@ def main(argv=None):
         cfg.use_semantic_scholar = False
     if args.no_dblp:
         cfg.use_dblp = False
-    if args.no_scholar:
-        cfg.use_scholar_fallback = False
 
     print("📚 Scholar BibTeX (API-first)")
     print(f"📂 输入: {args.input}  →  📄 输出: {output}")

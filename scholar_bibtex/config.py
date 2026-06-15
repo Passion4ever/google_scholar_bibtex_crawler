@@ -36,7 +36,6 @@ class Config:
     use_openalex: bool = True
     use_semantic_scholar: bool = True
     use_dblp: bool = True
-    use_scholar_fallback: bool = True
 
     @classmethod
     def from_env(cls, dotenv_path: str = ".env", **overrides) -> "Config":

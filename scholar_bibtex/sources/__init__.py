@@ -1,7 +1,7 @@
 import asyncio
 import logging
 
-from . import crossref, openalex, dblp, semantic_scholar, scholar
+from . import crossref, openalex, dblp, semantic_scholar
 from .doi_negotiation import fetch_bibtex as _doi_fetch
 from ..normalize import has_venue, inject_journal
 from ..ratelimit import RateLimiter
@@ -63,6 +63,3 @@ class DefaultSources:
                 continue
             merged.extend(r)
         return merged
-
-    async def scholar_fetch(self, query, proxy=None):
-        return await asyncio.to_thread(scholar.fetch, query, proxy)

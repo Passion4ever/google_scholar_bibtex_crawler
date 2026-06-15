@@ -3,8 +3,12 @@
 .google_scholar_nodriver_cookies.dat
 .scholar_bibtex_chrome_profile/
 
-# 内部设计/计划文档(不入公开仓库,本地保留)
-docs/superpowers/
+
+# 不入公开仓库(本地保留):设计文档 / 测试 / 开发依赖
+docs/*
+tests/
+requirements-dev.txt
+pytest.ini
 
 # Python
 __pycache__/
