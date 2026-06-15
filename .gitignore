@@ -3,6 +3,9 @@
 .google_scholar_nodriver_cookies.dat
 .scholar_bibtex_chrome_profile/
 
+# 内部设计/计划文档(不入公开仓库,本地保留)
+docs/superpowers/
+
 # Python
 __pycache__/
 *.py[cod]
