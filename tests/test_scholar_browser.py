@@ -34,6 +34,14 @@ def test_find_isolated_chromium_locates_linux_binary(tmp_path):
     assert found == str(exe)
 
 
+def test_find_isolated_chromium_locates_windows_binary(tmp_path):
+    exe = tmp_path / "chromium-1217" / "chrome-win" / "chrome.exe"
+    exe.parent.mkdir(parents=True)
+    exe.write_text("MZ")
+    found = find_isolated_chromium(bases=[str(tmp_path)])
+    assert found == str(exe)
+
+
 def test_find_isolated_chromium_picks_highest_version(tmp_path):
     for ver in ("chromium-1000", "chromium-1217", "chromium-1100"):
         exe = tmp_path / ver / "chrome-linux" / "chrome"

@@ -58,10 +58,14 @@ def find_isolated_chromium(bases=None) -> Optional[str]:
             os.path.expanduser("~/Library/Caches/ms-playwright"),  # macOS
             os.path.expanduser("~/.cache/ms-playwright"),          # Linux
         ]
+        local = os.environ.get("LOCALAPPDATA")
+        if local:
+            bases.append(os.path.join(local, "ms-playwright"))     # Windows
     pats = [
         "chromium-*/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing",
         "chromium-*/chrome-mac/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing",
         "chromium-*/chrome-linux/chrome",
+        "chromium-*/chrome-win/chrome.exe",                        # Windows
     ]
     matches = []
     for base in bases:
@@ -126,16 +130,15 @@ async def is_blocked(page) -> bool:
 
 
 def _notify(message: str):
-    """提醒用户来过验证码:声音(可靠)+ 横幅通知(需权限)+ 终端响铃。"""
+    """跨平台提醒用户来过验证码:声音(可靠)+ 系统通知(尽力)+ 终端响铃。"""
     print("\a", end="", flush=True)  # 终端响铃(可能被终端静音)
     if sys.platform == "darwin":
-        # 1) 直接播系统音:不需要通知权限,最可靠
+        # macOS: afplay 播系统音(不需要通知权限,最可靠)+ 横幅通知(需权限,补充)
         try:
             subprocess.Popen(["afplay", "/System/Library/Sounds/Glass.aiff"],
                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         except Exception:
             pass
-        # 2) 横幅通知:需要通知权限(System Settings → 通知),作为补充
         try:
             subprocess.Popen(
                 ["osascript", "-e",
@@ -144,6 +147,23 @@ def _notify(message: str):
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         except Exception:
             pass
+    elif sys.platform == "win32":
+        # Windows: winsound 响铃(标准库,无需权限)
+        try:
+            import winsound
+            winsound.MessageBeep(winsound.MB_ICONEXCLAMATION)
+        except Exception:
+            pass
+    else:
+        # Linux: 尽力播个声音(有就响,没有就只剩终端响铃)
+        for player, sound in [("paplay", "/usr/share/sounds/freedesktop/stereo/complete.oga"),
+                              ("aplay", "/usr/share/sounds/alsa/Front_Center.wav")]:
+            try:
+                subprocess.Popen([player, sound],
+                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                break
+            except Exception:
+                continue
 
 
 async def _wait_for_human(prompt: str):
