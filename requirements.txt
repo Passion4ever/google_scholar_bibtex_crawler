@@ -1,9 +1,7 @@
-# 核心(API 版 + 通用)
-httpx>=0.27
-rapidfuzz>=3.0
+# BibTeX 解析/归一化(统一引用键、姓名顺序)
 bibtexparser>=1.4,<2
 
-# Google Scholar 浏览器版抓取(scholar_browser.py)
+# Google Scholar 浏览器版抓取
 # nodriver: CDP 直连,无需 ChromeDriver,不挑 Chrome 版本
 nodriver>=0.50
 # playwright: 提供与系统隔离的 Chromium(运行 `playwright install chromium`)
