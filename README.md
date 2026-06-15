@@ -36,38 +36,37 @@ SEMANTIC_SCHOLAR_API_KEY=...
 
 真机冒烟测试(可选):`RUN_LIVE=1 python -m pytest tests/test_live_smoke.py`。
 
-## 旧版(纯 Google Scholar 抓取)
+## Google Scholar 浏览器版(nodriver,准确度优先)
 
-仍保留,适合 API 查不到的少数论文:
-
-```bash
-python get_google_scholar_bibtex.py <input.txt> [output.bib] [--proxy HOST:PORT]
-```
-
-### 示例
+用浏览器直接抓 Google Scholar 的 BibTeX。比 API 版**慢**(每条有礼貌延迟、偶尔需手动过验证码),但 GS 对"标题→正确论文"的消歧覆盖面更广。基于 **nodriver**(CDP 直连,无需 ChromeDriver,不挑 Chrome 版本)。
 
 ```bash
-# 基本使用
-python get_google_scholar_bibtex.py papers.txt
-
-# 使用代理
-python get_google_scholar_bibtex.py papers.txt --proxy 127.0.0.1:7890
+pip install -r requirements.txt
+playwright install chromium     # 下载隔离 Chromium(首次运行也会自动下)
+python -m scholar_bibtex.scholar_browser <input.txt> [output.bib]
 ```
 
-### 输入格式
+特点(对普通用户开箱即用):
 
-每行一条，支持 DOI 或论文标题：
+- **不碰你自己的浏览器**:自动用 Playwright 的独立 Chromium(找不到会自动下载),与系统 Chrome/Helium 完全隔离。
+- **验证码**:GS 按 IP/行为防爬,任何工具都绕不开。遇到时脚本暂停并**弹系统通知 + 响铃**,你在浏览器窗口手动完成后回终端按 Enter。cookie/会话持久化,**解一次后续大幅减少**(若窗口黑屏,点一下/拖动即可重绘)。
+- **断点续传**:重跑同一命令,已成功的跳过。
+- 输出每条带 `% Query` 注释,失败条目写入 `<output>.failed.txt`。
+
+> 减少验证码的最有效办法是**别用已被标记的 IP / 数据中心 IP**(住宅 IP 最好)、放慢节奏、靠 cookie 养信任。脚本已内置随机延迟与会话持久化。
+
+## 旧版(undetected-chromedriver,已不推荐)
+
+`get_google_scholar_bibtex.py` 是最初的 uc + Selenium 版。uc 已停更,新版 Chrome 上易因驱动版本不匹配失败,**建议改用上面的 nodriver 版**。
+
+## 输入格式
+
+每行一条,支持 DOI 或论文标题;`#` 开头为注释:
 
 ```
 10.1038/s41586-023-06415-8
 De novo design of protein structure and function with RFdiffusion
 ```
-
-## 说明
-
-- 遇到验证码时手动完成，按 Enter 继续
-- 支持断点续传
-- 可最小化窗口运行
 
 ## License
 
